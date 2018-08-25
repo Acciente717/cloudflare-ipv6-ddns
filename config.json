@@ -1,0 +1,11 @@
+{
+    "zone_id" : "",
+    "record_id" : "",
+    "email" : "",
+    "api_key" : "",
+    "type":"AAAA",
+    "name":"",
+    "ttl":1,
+    "proxied":false, 
+    "interval" : 300
+}
