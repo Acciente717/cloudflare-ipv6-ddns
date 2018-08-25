@@ -37,7 +37,7 @@ def invoke_curl_command(command):
     Invoke "curl" to use Cloudflare API to update DNS record.
     """
     
-    curl_subp = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+    curl_subp = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, _ = curl_subp.communicate()
     curl_subp.wait()
     curl_response = json.loads(stdout)
