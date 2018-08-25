@@ -59,13 +59,23 @@ def load_user_config_file():
     return conf
 
 
-def generate_curl_command(conf, ipv6_addr):
+def generate_curl_command(conf, ipv6_addr, mode):
     """
-    Generate command to invoke "curl" for Cloudflare API communication.
+    Generate command to invoke "curl" for DNS record query or updating
+    using Cloudflare API.
     """
     
-    pattern = """              curl -X PUT "https://api.cloudflare.com/client/v4/zones/%s/dns_records/%s"               -H "X-Auth-Email:%s" -H "X-Auth-Key:%s" -H "Content-Type: application/json"               --data '{"type":"%s","name":"%s","content":"%s","ttl":%d,"proxied":%s}'              """
-    command = pattern % (conf["zone_id"], conf["record_id"], conf["email"], conf["api_key"], conf["type"],
+    if mode == "put":
+        mode = "PUT"
+    else:
+        mode = "GET"
+    
+    pattern = """\
+              curl -X %s "https://api.cloudflare.com/client/v4/zones/%s/dns_records/%s" \
+              -H "X-Auth-Email:%s" -H "X-Auth-Key:%s" -H "Content-Type: application/json" \
+              --data '{"type":"%s","name":"%s","content":"%s","ttl":%d,"proxied":%s}'\
+              """
+    command = pattern % (mode, conf["zone_id"], conf["record_id"], conf["email"], conf["api_key"], conf["type"],
               conf["name"], ipv6_addr, conf["ttl"], conf["proxied"])
     
     return command
@@ -86,9 +96,9 @@ def dump_error_message(curl_cmd, curl_response):
         print(curl_response, file=fp)
 
 
-def invoke_curl_command(command):
+def invoke_curl_command(command, mode):
     """
-    Invoke "curl" to use Cloudflare API to update DNS record.
+    Invoke "curl" to use Cloudflare API to query or update DNS record.
     """
     
     curl_subp = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -97,8 +107,30 @@ def invoke_curl_command(command):
     curl_response = json.loads(stdout)
     
     if not curl_response["success"]:
+        if mode == "put":
+            print("Error occured when performing PUT request. Error message dumped.")
+        else:
+            print("Error occured when performing GET request. Error message dumped.")
         dump_error_message(command, curl_response)
+        
         raise CurlFailError
+    
+    return curl_response
+
+
+def save_get_log(ipv6_addr):
+    """
+    Save the log of a successful DNS record query,
+    when the DNS record is already up to date.
+    """
+    
+    nowtime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    with open("info.log", "a") as fp:
+        print("[" + nowtime + "] DNS record query succeeded. The record is up to date: "
+             + ipv6_addr, file=fp)
+        print("[" + nowtime + "] DNS record query succeeded. The record is up to date: "
+             + ipv6_addr)
 
 
 def save_put_log(ipv6_addr):
@@ -118,20 +150,27 @@ def save_put_log(ipv6_addr):
 def main():
     conf = load_user_config_file()
     interval = conf["interval"]
+    
+    try:
+        while True:
 
-    while True:
-        ip_response = invoke_ip_command()
-        ipv6_addr = find_optimal_ipv6_address(ip_response)
-        curl_cmd = generate_curl_command(conf, ipv6_addr)
+            ip_response = invoke_ip_command()
+            ipv6_addr = find_optimal_ipv6_address(ip_response)
 
-        try:
-            invoke_curl_command(curl_cmd)
-        except Exception:
-            exit(1)    
+            curl_get_cmd = generate_curl_command(conf, ipv6_addr, "get")
+            status = invoke_curl_command(curl_get_cmd, "get")
 
-        save_put_log(ipv6_addr)
+            if status["result"]["content"] == ipv6_addr:
+                save_get_log(ipv6_addr)
+            else:
+                curl_put_cmd = generate_curl_command(conf, ipv6_addr, "put")
+                invoke_curl_command(curl_put_cmd, "put")
+                save_put_log(ipv6_addr)
 
-        time.sleep(interval)
+            time.sleep(interval)
+            
+    except Exception:
+        exit(1)
 
 
 if __name__ == "__main__":
