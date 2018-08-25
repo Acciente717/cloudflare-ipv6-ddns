@@ -70,11 +70,9 @@ def generate_curl_command(conf, ipv6_addr, mode):
     else:
         mode = "GET"
     
-    pattern = """\
-              curl -X %s "https://api.cloudflare.com/client/v4/zones/%s/dns_records/%s" \
-              -H "X-Auth-Email:%s" -H "X-Auth-Key:%s" -H "Content-Type: application/json" \
-              --data '{"type":"%s","name":"%s","content":"%s","ttl":%d,"proxied":%s}'\
-              """
+    pattern = """curl -X %s "https://api.cloudflare.com/client/v4/zones/%s/dns_records/%s" \
+-H "X-Auth-Email:%s" -H "X-Auth-Key:%s" -H "Content-Type: application/json" \
+--data '{"type":"%s","name":"%s","content":"%s","ttl":%d,"proxied":%s}'"""
     command = pattern % (mode, conf["zone_id"], conf["record_id"], conf["email"], conf["api_key"], conf["type"],
               conf["name"], ipv6_addr, conf["ttl"], conf["proxied"])
     
