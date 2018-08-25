@@ -38,7 +38,7 @@ def invoke_curl_command(command):
     """
     
     curl_subp = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-    stdout, stderr = curl_subp.communicate()
+    stdout, _ = curl_subp.communicate()
     curl_subp.wait()
     curl_response = json.loads(stdout)
     
@@ -62,6 +62,7 @@ def find_record_id(page_num, conf):
     Search through all pages to find desired record id.
     """
     
+    dns_name = conf["name"]
     found = False
     record_id = None
     
@@ -82,7 +83,7 @@ def find_record_id(page_num, conf):
 def main():
     conf = load_user_config_file()
 
-    dns_name = input()
+    dns_name = conf["name"]
 
     curl_cmd = generate_curl_command(conf, 1)
     response = invoke_curl_command(curl_cmd)
